@@ -1,0 +1,45 @@
+{
+  "name": "zenvia-proxy",
+  "version": "1.0.0",
+  "description": "Proxy para API da Zenvia usando AWS Lambda e Serverless Framework",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "serverless offline",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f zenviaProxy -t",
+    "info": "serverless info",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "zenvia",
+    "sms",
+    "proxy"
+  ],
+  "author": "Rafael Nascimento",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "lru-cache": "^11.2.1"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/zenvia-proxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/zenvia-proxy/issues"
+  },
+  "homepage": "https://github.com/your-username/zenvia-proxy#readme"
+}
