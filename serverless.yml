@@ -4,8 +4,8 @@ frameworkVersion: '3'
 
 provider:
   name: aws
-  runtime: nodejs18.x
-  region: us-east-1
+  runtime: nodejs20.x
+  region: sa-east-1
   stage: ${opt:stage, 'dev'}
   memorySize: 256
   timeout: 30
@@ -52,13 +52,13 @@ package:
     - '!README.md'
     - '!.gitignore'
 
-plugins:
-  - serverless-offline
+# plugins:
+#   - serverless-offline
 
-custom:
-  serverless-offline:
-    httpPort: 3000
-    host: 0.0.0.0
+# custom:
+#   serverless-offline:
+#     httpPort: 3000
+#     host: 0.0.0.0
 
 resources:
   Resources:
@@ -75,11 +75,3 @@ resources:
         Ref: HttpApi
       Export:
         Name: ${self:service}-${self:provider.stage}-restApiId
-    
-    ApiGatewayRestApiRootResourceId:
-      Value:
-        Fn::GetAtt:
-          - HttpApi
-          - RootResourceId
-      Export:
-        Name: ${self:service}-${self:provider.stage}-rootResourceId
