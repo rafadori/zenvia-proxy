@@ -17,7 +17,7 @@ export const handler = async (event) => {
     }
 
     const token = event.headers?.Authorization || event.headers?.authorization;
-    const TOKEN_VALIDO = process.env.ZENVIA_TOKEN; // Token válido ou usar Secrets Manager
+    const TOKEN_VALIDO = process.env.ZENVIA_TOKEN; 
 
     if (token !== TOKEN_VALIDO) {
       return {
