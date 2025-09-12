@@ -1,0 +1,99 @@
+version: 0.2
+
+# Variáveis de ambiente globais
+env:
+  variables:
+    NODE_VERSION: "18"
+    SERVERLESS_VERSION: "3.38.0"
+  parameter-store:
+    # Exemplo de como usar Parameter Store para secrets
+    # ZENVIA_TOKEN: "/zenvia-proxy/zenvia-token"
+    # ZENVIA_API_TOKEN: "/zenvia-proxy/zenvia-api-token"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "=== FASE DE INSTALAÇÃO ==="
+      - echo "Instalando dependências do projeto..."
+      - npm ci --only=production
+      - echo "Instalando Serverless Framework globalmente..."
+      - npm install -g serverless@$SERVERLESS_VERSION
+      - echo "Verificando versões instaladas..."
+      - node --version
+      - npm --version
+      - serverless --version
+
+  pre_build:
+    commands:
+      - echo "=== FASE PRÉ-BUILD ==="
+      - echo "Verificando configuração AWS..."
+      - aws sts get-caller-identity
+      - echo "Verificando região AWS configurada..."
+      - aws configure get region
+      - echo "Validando sintaxe do serverless.yml..."
+      - serverless print --stage ${STAGE:-dev}
+      - echo "Executando testes (se houver)..."
+      # - npm test  # Descomente quando tiver testes
+
+  build:
+    commands:
+      - echo "=== FASE DE BUILD E DEPLOY ==="
+      - echo "Iniciando deploy para o ambiente: ${STAGE:-dev}"
+      - |
+        if [ "$STAGE" = "prod" ]; then
+          echo "Deploy para PRODUÇÃO - Executando com validações extras"
+          serverless deploy --stage prod --verbose
+        else
+          echo "Deploy para DESENVOLVIMENTO"
+          serverless deploy --stage ${STAGE:-dev} --verbose
+        fi
+      - echo "Obtendo informações do deploy..."
+      - serverless info --stage ${STAGE:-dev}
+
+  post_build:
+    commands:
+      - echo "=== FASE PÓS-BUILD ==="
+      - |
+        if [ $CODEBUILD_BUILD_SUCCEEDING -eq 1 ]; then
+          echo "✅ BUILD CONCLUÍDO COM SUCESSO!"
+          echo "Ambiente: ${STAGE:-dev}"
+          echo "Timestamp: $(date)"
+          echo "Commit: $CODEBUILD_RESOLVED_SOURCE_VERSION"
+          
+          # Executar testes de integração (se houver)
+          # echo "Executando testes de integração..."
+          # npm run test:integration
+          
+          echo "Deploy finalizado com sucesso!"
+        else
+          echo "❌ BUILD FALHOU!"
+          echo "Verificando logs para diagnóstico..."
+          exit 1
+        fi
+
+# Artefatos a serem preservados
+artifacts:
+  files:
+    - '**/*'
+  exclude-paths:
+    - node_modules/**/*
+    - .git/**/*
+    - .serverless/**/*
+  name: zenvia-proxy-build-$(date +%Y-%m-%d-%H-%M-%S)
+
+# Cache para acelerar builds subsequentes
+cache:
+  paths:
+    - 'node_modules/**/*'
+    - '.serverless/**/*'
+
+# Reports (opcional - para métricas)
+reports:
+  # Exemplo para relatórios de teste
+  # jest_reports:
+  #   files:
+  #     - 'coverage/lcov.info'
+  #   file-format: 'CLOVERXML'
+  #   base-directory: 'coverage'
