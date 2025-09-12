@@ -55,7 +55,7 @@ export const handler = async (event) => {
         httpsAgent: new https.Agent({
           maxVersion: 'TLSv1.3', // Força TLS 1.3
         }),
-        timeout: 25000, // Timeout de 25 segundos
+        timeout: 20000, // Timeout de 20 segundos
       }
     );
 
