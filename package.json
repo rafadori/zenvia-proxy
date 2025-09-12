@@ -36,10 +36,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/zenvia-proxy.git"
+    "url": "git+https://github.com/rafadori/zenvia-proxy.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/zenvia-proxy/issues"
+    "url": "https://github.com/rafadori/zenvia-proxy/issues"
   },
-  "homepage": "https://github.com/your-username/zenvia-proxy#readme"
+  "homepage": "https://github.com/rafadori/zenvia-proxy#readme"
 }
