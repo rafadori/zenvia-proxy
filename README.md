@@ -1,236 +1,287 @@
-# Zenvia Proxy Middleware
+# Zenvia Proxy – Middleware Serverless para Compatibilidade TLS
 
-## Visão Geral
+Este projeto resolve um **problema comum em ambientes legados**:  
+sistemas que **não suportam versões modernas de TLS (ex: TLS 1.2+)**, mas precisam se integrar com APIs externas que **exigem padrões atuais de segurança**.
 
-O **Zenvia Proxy Middleware** é uma solução serverless desenvolvida para permitir que APIs legados realizem chamadas para o endpoint da Zenvia utilizando a versão correta do protocolo TLS, garantindo compatibilidade e segurança. Este middleware atua como um proxy inteligente, oferecendo autenticação, validação de dados e tratamento de erros robusto.
+O **Zenvia Proxy** atua como um **middleware serverless na AWS**, criando uma **camada de compatibilidade TLS** entre:
 
-### Características Principais
+- 🏚️ **Sistemas legados** (TLS antigo / restrições técnicas)
+- ☁️ **APIs modernas** (TLS atualizado, compliance e boas práticas)
 
-- ✅ **Compatibilidade com APIs Legados**: Permite integração sem modificações no código existente
-- 🔒 **Segurança Avançada**: Implementa TLS 1.3 e autenticação por token
-- 🚀 **Serverless**: Baseado em AWS Lambda para escalabilidade automática
-- 📊 **Monitoramento**: Logs estruturados e health check integrado
-- 🔄 **CI/CD Automatizado**: Pipeline completo com AWS CodeBuild
-- ⚡ **Alta Performance**: Timeout otimizado e cache de conexões
+> ⚠️ **Importante:**  
+> Este repositório **não é apenas código de API**.  
+> Ele é uma solução **100% autônoma de provisionamento**.
+>
+> 👉 **Nenhum recurso precisa ser criado manualmente no Console da AWS**  
+> 👉 **Lambda, API Gateway, IAM e Logs são gerados automaticamente**  
+> 👉 **Clone → Deploy → Infra pronta**
 
+A solução utiliza **AWS Lambda + API Gateway**, eliminando servidores, reduzindo custos e garantindo **segurança, escalabilidade e isolamento do ambiente legado**.
 
-### Credenciais e Permissões AWS
+---
 
-- Conta AWS ativa com permissões para:
-  - AWS Lambda
-  - API Gateway
-  - CloudWatch Logs
-  - IAM (para criação de roles)
-  - AWS CodeBuild (para CI/CD)
+## 🤖 Provisionamento 100% Automático (Zero Console AWS)
 
+Este projeto utiliza **Infrastructure as Code (IaC)** com o **Serverless Framework**.
 
-### Endpoints Disponíveis
+Ao executar o deploy:
 
-#### 1. Health Check
+- ❌ Não é necessário criar Lambda manualmente
+- ❌ Não é necessário criar API Gateway manualmente
+- ❌ Não é necessário configurar IAM
+- ❌ Não é necessário configurar logs ou rotas
+- ❌ Não é necessário acessar o Console da AWS
 
-**GET** `/health`
+Todo o provisionamento é feito **exclusivamente via código**, a partir do arquivo `serverless.yml`.
+
+O único requisito é possuir **credenciais AWS válidas**.
+
+---
+
+## 🏗️ Arquitetura – Camada de Compatibilidade TLS
+
+Fluxo de comunicação:
+
+```
+
+Sistema Legado
+(TLS antigo)
+↓
+API Gateway (TLS moderno)
+↓
+AWS Lambda (Proxy / Validação)
+↓
+Zenvia API (TLS atualizado)
+
+```
+
+Fluxo de provisionamento:
+
+```
+
+Git Clone
+↓
+serverless deploy
+↓
+AWS CloudFormation
+↓
+Lambda + API Gateway criados automaticamente
+
+```
+
+---
+
+### 1. Computação (AWS Lambda)
+
+- **Função:** `zenviaProxy`
+- **Runtime:** Node.js 20.x
+- **Papel:** Middleware de compatibilidade e segurança
+- **Características:** Escalabilidade automática, sem servidores para gerenciar
+
+---
+
+### 2. Networking (Amazon API Gateway)
+
+- **Tipo:** HTTP API (v2)
+- **Função:** Expor o proxy de forma segura para o sistema legado
+- **Configuração:**
+  - TLS moderno
+  - CORS habilitado
+  - Rotas definidas (`/send-sms`, `/health`)
+
+---
+
+### 3. Observabilidade (Amazon CloudWatch)
+
+- **Log Groups:** Criados automaticamente
+- **Finalidade:** Auditoria, troubleshooting e rastreabilidade
+- **Retenção:** 14 dias (otimização de custos)
+
+---
+
+### 4. Segurança (AWS IAM + TLS Moderno)
+
+- Comunicação externa protegida com **TLS atualizado**, independentemente das limitações do sistema legado
+- **Isolamento completo** do ambiente legado
+- **Princípio de privilégio mínimo** para execução da Lambda
+- Logs centralizados para auditoria
+
+---
+
+## 🔐 Papel do Middleware (Lambda Proxy)
+
+A função Lambda não atua apenas como repasse de requisições. Ela é responsável por:
+
+- ✔️ Encapsular a comunicação TLS moderna
+- ✔️ Isolar o sistema legado de mudanças de segurança externas
+- ✔️ Centralizar autenticação e headers sensíveis
+- ✔️ Validar e sanitizar payloads
+- ✔️ Padronizar respostas para o sistema de origem
+- ✔️ Permitir evolução futura sem impacto no legado
+
+---
+
+## 🚀 Pipeline de Deploy Automatizado
+
+A implantação é totalmente gerenciada via CLI, garantindo **reprodutibilidade e consistência** entre ambientes.
+
+### Pré-requisitos
+
+- **Node.js** (v18 ou superior)
+- **Serverless Framework**
+  ```bash
+  npm i -g serverless
+  ```
+
+````
+
+* **Credenciais AWS** configuradas localmente
+  (`~/.aws/credentials` ou variáveis de ambiente)
+
+---
+
+### Comandos de Deploy
+
+**1. Instalar dependências**
 
 ```bash
-curl -X GET http://localhost:3000/health
+npm install
 ```
 
-**Resposta:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "version": "1.0.0"
-}
+**2. Deploy em Desenvolvimento (Padrão)**
+Cria automaticamente toda a infraestrutura na região `sa-east-1`.
+
+```bash
+npm run deploy
+# ou
+serverless deploy
 ```
 
-#### 2. Envio de SMS
+**3. Deploy em Produção**
 
-**POST** `/send-sms`
-
-**Headers:**
-```
-Authorization: seu_token_middleware
-Content-Type: application/json
+```bash
+npm run deploy:prod
 ```
 
-**Body:**
+**4. Remover Infraestrutura**
+Remove **todos** os recursos criados e interrompe cobranças.
+
+```bash
+npm run remove
+```
+
+---
+
+### O que acontece durante o deploy?
+
+Ao executar `serverless deploy`, o processo realiza automaticamente:
+
+1. Empacotamento do código da Lambda
+2. Geração do template CloudFormation
+3. Criação ou atualização de:
+
+   * AWS Lambda
+   * Amazon API Gateway
+   * IAM Roles
+   * CloudWatch Log Groups
+4. Publicação da API e retorno da URL final
+
+👉 **Nenhuma etapa manual é necessária.**
+
+---
+
+## 🛠️ Desenvolvimento Local
+
+Para testar a lógica da Lambda e as rotas do API Gateway localmente sem fazer deploy na AWS:
+
+```bash
+npm run dev
+```
+
+O serviço estará disponível em:
+
+```
+http://localhost:3000
+```
+
+---
+
+## 🔌 API Reference
+
+Os endpoints abaixo são expostos para consumo **exclusivo do sistema legado**, funcionando como uma interface estável e segura, independentemente das exigências da API da Zenvia.
+
+### 1. Health Check
+
+Verifica se a infraestrutura está operante.
+
+* **GET** `/health`
+
+```bash
+curl https://{id}.execute-api.sa-east-1.amazonaws.com/health
+```
+
+---
+
+### 2. Proxy de Envio de SMS
+
+* **POST** `/send-sms`
+* **Headers:** `Authorization`, `Content-Type: application/json`
+
+**Exemplo de Payload:**
+
 ```json
 {
   "sendSmsRequest": {
     "to": "5511999999999",
-    "msg": "Sua mensagem aqui",
-    "callbackOption": "NONE",
-    "id": "unique-message-id",
-    "aggregateId": "campaign-id"
+    "msg": "Mensagem enviada via Serverless Proxy"
   }
 }
 ```
 
-**Exemplo de Requisição:**
-```bash
-curl -X POST http://localhost:3000/send-sms \
-  -H "Authorization: seu_token_middleware" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sendSmsRequest": {
-      "to": "5511999999999",
-      "msg": "Teste de mensagem via proxy"
-    }
-  }'
-```
+---
 
-**Resposta de Sucesso:**
-```json
-{
-  "sendSmsResponse": {
-    "statusCode": "00",
-    "statusDescription": "Ok",
-    "detailCode": "000",
-    "detailDescription": "Message Sent"
-  }
-}
-```
+## ⚙️ Infraestrutura como Código (serverless.yml)
 
-**Resposta de Erro:**
-```json
-{
-  "error": "Campos 'to' e 'msg' são obrigatórios"
-}
-```
+O arquivo `serverless.yml` é o **coração da solução**.
 
-### Códigos de Status HTTP
+Ele define **toda a infraestrutura**, incluindo:
 
-- **200**: Sucesso
-- **400**: Dados inválidos ou campos obrigatórios ausentes
-- **403**: Token de autenticação inválido
-- **500**: Erro interno do servidor ou falha na API Zenvia
+* Criação da função AWS Lambda
+* Criação do API Gateway HTTP (v2)
+* Definição de rotas e métodos
+* Configuração de permissões IAM
+* Configuração de logs no CloudWatch
+* Parâmetros de memória, timeout e região
 
-### Deploy Automatizado (CI/CD)
+Nenhum desses recursos precisa existir previamente na conta AWS.
 
-#### Configuração do AWS CodeBuild
+---
 
-1. **Criar Projeto no CodeBuild:**
-   - Nome: `zenvia-proxy-build`
-   - Source: GitHub/CodeCommit
-   - Buildspec: Usar `buildspec.yml` do repositório
-
-2. **Configurar Variáveis de Ambiente:**
-   ```
-   STAGE=dev  # ou prod para produção
-   ```
-
-3. **Permissões IAM Necessárias:**
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": [
-           "lambda:*",
-           "apigateway:*",
-           "iam:*",
-           "logs:*",
-           "cloudformation:*",
-           "s3:*",
-           "ssm:GetParameter"
-         ],
-         "Resource": "*"
-       }
-     ]
-   }
-   ```
-
-#### Trigger Automático
-
-O pipeline será executado automaticamente em:
-- Push para branch `main` (produção)
-- Push para branch `develop` (desenvolvimento)
-- Pull requests (validação)
-
-### Comandos Úteis
-
-```bash
-# Visualizar informações do deploy
-npm run info
-
-# Visualizar logs em tempo real
-npm run logs
-
-# Remover stack completa
-npm run remove
-```
-
-## Monitoramento e Logs
-
-### CloudWatch Logs
-
-Os logs são automaticamente enviados para CloudWatch com retenção de 14 dias:
-
-- **Log Group**: `/aws/lambda/zenvia-proxy-{stage}-zenviaProxy`
-- **Estrutura**: JSON estruturado para facilitar consultas
-
-
-## Segurança
-
-### Boas Práticas Implementadas
-
-- ✅ **TLS 1.3**: Protocolo mais seguro para comunicação
-- ✅ **Autenticação por Token**: Validação obrigatória de acesso
-- ✅ **Validação de Input**: Sanitização de dados de entrada
-- ✅ **Logs Estruturados**: Não exposição de dados sensíveis
-- ✅ **CORS Configurado**: Controle de origem das requisições
-- ✅ **Timeout Definido**: Prevenção de ataques de DoS
-
-
-## Troubleshooting
-
-### Problemas Comuns
-
-#### 1. Erro 403 - Token Inválido
-```
-{
-  "error": "Acesso não autorizado"
-}
-```
-**Solução**: Verifique se o token no header `Authorization` está correto.
-
-#### 2. Erro 400 - Campos Obrigatórios
-```
-{
-  "error": "Campos 'to' e 'msg' são obrigatórios"
-}
-```
-**Solução**: Certifique-se de que os campos `to` e `msg` estão presentes no `sendSmsRequest`.
-
-#### 3. Timeout na API Zenvia
-```
-{
-  "error": "Falha interna",
-  "details": "timeout of 25000ms exceeded"
-}
-```
-**Solução**: Verifique a conectividade com a API Zenvia ou aumente o timeout.
-
-#### 4. Erro de Deploy
-```
-Serverless Error: The CloudFormation template is invalid
-```
-**Solução**: Valide a sintaxe do `serverless.yml` com `serverless print`.
-
-
-### Padrões de Código
-
-- **ESLint**: Utilize as regras configuradas
-- **Commits**: Siga o padrão [Conventional Commits](https://conventionalcommits.org/)
-- **Testes**: Adicione testes para novas funcionalidades
-- **Documentação**: Atualize o README para mudanças significativas
-
-### Estrutura de Commits
+## 📄 Estrutura do Projeto
 
 ```
-feat: adiciona validação de número de telefone
-fix: corrige timeout na API Zenvia
-docs: atualiza documentação de deploy
-test: adiciona testes para endpoint health
+.
+├── src/                # Lógica do middleware
+├── serverless.yml      # Infraestrutura como Código (IaC)
+├── buildspec.yml       # Pipeline de Build (AWS CodeBuild)
+├── package.json        # Dependências e Scripts
+└── README.md           # Documentação
 ```
+
+---
+
+## 🎯 Quando usar esta solução
+
+Esta abordagem é ideal quando:
+
+* O sistema de origem não suporta TLS moderno
+* Não é viável atualizar o ambiente legado
+* É necessário integrar com APIs externas seguras
+* Busca-se uma solução:
+
+  * Serverless
+  * De baixo custo operacional
+  * Sem manutenção de servidores
+  * Com isolamento e controle de segurança
+
+````
