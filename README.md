@@ -1,109 +1,66 @@
-# Zenvia Proxy – Middleware Serverless para Compatibilidade TLS
+# zenvia-proxy
 
-Este projeto resolve um **problema comum em ambientes legados**:  
-sistemas que **não suportam versões modernas de TLS (ex: TLS 1.2+)**, mas precisam se integrar com APIs externas que **exigem padrões atuais de segurança**.
+Middleware serverless para integração com a API Zenvia em ambientes que não suportam TLS moderno.
 
-O **Zenvia Proxy** atua como um **middleware serverless na AWS**, criando uma **camada de compatibilidade TLS** entre:
+## O problema
 
-- 🏚️ **Sistemas legados** (TLS antigo / restrições técnicas)
-- ☁️ **APIs modernas** (TLS atualizado, compliance e boas práticas)
+Sistemas legados frequentemente travam em versões antigas de TLS e não conseguem se comunicar com APIs externas que exigem TLS 1.2+. Criar um túnel direto não é opção — e subir um servidor só pra isso é desperdício.
 
-> ⚠️ **Importante:**  
-> Este repositório **não é apenas código de API**.  
-> Ele é uma solução **100% autônoma de provisionamento**.
->
-> 👉 **Nenhum recurso precisa ser criado manualmente no Console da AWS**  
-> 👉 **Lambda, API Gateway, IAM e Logs são gerados automaticamente**  
-> 👉 **Clone → Deploy → Infra pronta**
+## A solução
 
-A solução utiliza **AWS Lambda + API Gateway**, eliminando servidores, reduzindo custos e garantindo **segurança, escalabilidade e isolamento do ambiente legado**.
+Um proxy rodando no AWS Lambda, exposto via API Gateway. O sistema legado fala com o proxy (sem restrição de TLS do lado dele), e o proxy faz a chamada para a Zenvia com TLS atualizado.
 
----
+Sistema legado → API Gateway → Lambda → Zenvia API
 
-## 🤖 Provisionamento 100% Automático (Zero Console AWS)
+Sem servidores pra gerenciar. Sem custo fixo. Escala sozinho.
 
-Este projeto utiliza **Infrastructure as Code (IaC)** com o **Serverless Framework**.
+## Infraestrutura
 
-Ao executar o deploy:
+Tudo provisionado via [Serverless Framework](https://www.serverless.com/). Um único `serverless deploy` cria:
 
-- ❌ Não é necessário criar Lambda manualmente
-- ❌ Não é necessário criar API Gateway manualmente
-- ❌ Não é necessário configurar IAM
-- ❌ Não é necessário configurar logs ou rotas
-- ❌ Não é necessário acessar o Console da AWS
+- AWS Lambda (`zenviaProxy`, Node.js 20.x)
+- API Gateway HTTP (rotas `/send-sms` e `/health`, CORS habilitado)
+- IAM roles com privilégio mínimo
+- CloudWatch Log Groups (retenção de 14 dias)
 
-Todo o provisionamento é feito **exclusivamente via código**, a partir do arquivo `serverless.yml`.
+Nenhum recurso precisa ser criado manualmente no console da AWS.
 
-O único requisito é possuir **credenciais AWS válidas**.
+## Pré-requisitos
 
----
+- Node.js 20.x
+- Serverless Framework instalado (`npm i -g serverless`)
+- Credenciais AWS configuradas (`~/.aws/credentials` ou variáveis de ambiente)
 
-## 🏗️ Arquitetura – Camada de Compatibilidade TLS
+## Deploy
 
-Fluxo de comunicação:
-
-```
-
-Sistema Legado
-(TLS antigo)
-↓
-API Gateway (TLS moderno)
-↓
-AWS Lambda (Proxy / Validação)
-↓
-Zenvia API (TLS atualizado)
-
-```
-
-Fluxo de provisionamento:
-
-```
-
-Git Clone
-↓
+```bash
+git clone https://github.com/seu-usuario/zenvia-proxy
+cd zenvia-proxy
+npm install
 serverless deploy
-↓
-AWS CloudFormation
-↓
-Lambda + API Gateway criados automaticamente
-
 ```
 
----
+O CLI vai retornar a URL do endpoint ao final do deploy.
 
-### 1. Computação (AWS Lambda)
+## Rotas
 
-- **Função:** `zenviaProxy`
-- **Runtime:** Node.js 20.x
-- **Papel:** Middleware de compatibilidade e segurança
-- **Características:** Escalabilidade automática, sem servidores para gerenciar
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/send-sms` | Encaminha requisição de SMS para a Zenvia |
+| GET | `/health` | Healthcheck do proxy |
 
----
+## Observabilidade
 
-### 2. Networking (Amazon API Gateway)
+Logs disponíveis no CloudWatch em `/aws/lambda/zenviaProxy`. Útil para auditoria e debug sem precisar acessar a Lambda diretamente.
 
-- **Tipo:** HTTP API (v2)
-- **Função:** Expor o proxy de forma segura para o sistema legado
-- **Configuração:**
-  - TLS moderno
-  - CORS habilitado
-  - Rotas definidas (`/send-sms`, `/health`)
+```bash
+serverless logs -f zenviaProxy --tail
+```
 
----
+## Remover
 
-### 3. Observabilidade (Amazon CloudWatch)
+```bash
+serverless remove
+```
 
-- **Log Groups:** Criados automaticamente
-- **Finalidade:** Auditoria, troubleshooting e rastreabilidade
-- **Retenção:** 14 dias (otimização de custos)
-
----
-
-### 4. Segurança (AWS IAM + TLS Moderno)
-
-- Comunicação externa protegida com **TLS atualizado**, independentemente das limitações do sistema legado
-- **Isolamento completo** do ambiente legado
-- **Princípio de privilégio mínimo** para execução da Lambda
-- Logs centralizados para auditoria
-
----
+Remove todos os recursos criados na AWS.
